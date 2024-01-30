@@ -1,5 +1,24 @@
 {
-	"devDependencies": {
-		"@sphinx-labs/plugins": "^0.27.0"
-	}
+  "scripts": {
+    "compile": "/bin/bash script/compile.sh"
+  },
+  "devDependencies": {
+    "@api3/contracts": "0.9.1",
+    "@chainlink/contracts": "0.4.2",
+    "@mean-finance/call-simulation": "Mean-Finance/call-simulation#a510c80",
+    "@mean-finance/chainlink-registry": "Mean-Finance/chainlink-registry#ec4ac18",
+    "@mean-finance/dca-v2-core": "Mean-Finance/dca-v2-core#0bd55b1",
+    "@mean-finance/dca-v2-periphery": "Mean-Finance/dca-v2-periphery#e85aa01",
+    "@mean-finance/deterministic-factory": "Mean-Finance/deterministic-factory#1441e66",
+    "@mean-finance/nft-descriptors": "Mean-Finance/nft-descriptors#5f918a2",
+    "@mean-finance/oracles": "Mean-Finance/oracles#e8bfac2",
+    "@mean-finance/permit2-adapter": "Mean-Finance/permit2-adapter#197fb80",
+    "@mean-finance/swappers": "Mean-Finance/swappers#1167d3b",
+    "@mean-finance/transformers": "Mean-Finance/transformers#8795e0b",
+    "@mean-finance/uniswap-v3-oracle": "1.0.2",
+    "@openzeppelin/contracts": "4.9.3",
+    "@sphinx-labs/plugins": "^0.27.1",
+    "@uniswap/v3-core": "1.0.1",
+    "base64-sol": "1.0.1"
+  }
 }
