@@ -3,8 +3,9 @@ env:
     SPHINX_API_KEY: ${{ secrets.SPHINX_API_KEY }}
     ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
 
-# Trigger the proposal when the pull request is merged.
 on:
+  workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main
