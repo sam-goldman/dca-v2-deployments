@@ -3,9 +3,6 @@ pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
 import { Sphinx, Network } from "@sphinx-labs/contracts/SphinxPlugin.sol";
-import { Simulator } from "@call-simulation/Simulator.sol";
-import { IUniswapV3Adapter } from "@mean-finance/oracles/solidity/interfaces/adapters/IUniswapV3Adapter.sol";
-import { IStaticOracle } from '@mean-finance/uniswap-v3-oracle/solidity/interfaces/IStaticOracle.sol';
 import { IPermit2, UniversalPermit2Adapter } from '@mean-finance/permit2-adapter/UniversalPermit2Adapter.sol';
 
 bytes32 constant SIMULATOR_SALT = bytes32(
@@ -32,11 +29,11 @@ contract DCA_v2 is Sphinx, Script {
 
     function setUp() public virtual {
         // Sphinx config options
-        sphinxConfig.owners = [address(0)];
-        sphinxConfig.orgId = "";
-        sphinxConfig.mainnets = [Network.optimism];
-        sphinxConfig.testnets = [Network.optimism_sepolia];
-        sphinxConfig.threshold = 0;
+        sphinxConfig.owners = [0xEF7CBca28a2F0f028dd82fF62f92C3b4065Ec200];
+        sphinxConfig.orgId = "cloepk9wp0001l809rbsegymp";
+        sphinxConfig.mainnets = [ Network.optimism ];
+        sphinxConfig.testnets = [ Network.optimism_sepolia];
+        sphinxConfig.threshold = 1;
         sphinxConfig.projectName = "DCA_v2";
 
         msig = safeAddress();
@@ -61,6 +58,7 @@ contract DCA_v2 is Sphinx, Script {
     /// regardless of how we load the creation code. In other words, the type safety of `CREATE3`
     /// deployments isn't strong regardless.
     function run() public sphinx {
+        
         // Deterministic Factory
         bytes memory deterministicFactoryCreationCode = abi.encodePacked(vm.getCode("DeterministicFactory.sol"), abi.encode(msig, msig));
         deterministicFactory = vm.computeCreate2Address(ZERO_SALT, keccak256(deterministicFactoryCreationCode));
@@ -70,109 +68,22 @@ contract DCA_v2 is Sphinx, Script {
             require(deterministicFactory.code.length > 0, "DeterministicFactory address mismatch.");
         }
 
-        // Call Simulation
-        address simulatorAddress = vm.computeCreate2Address(SIMULATOR_SALT, keccak256(type(Simulator).creationCode));
-        if (simulatorAddress.code.length == 0) {
-            Simulator simulator = new Simulator{salt: SIMULATOR_SALT}();
-            require(simulatorAddress == address(simulator), "Simulator address mismatch.");
-        }
 
-        // Permit2 Adapter
-        address permit2AdapterAddress = vm.computeCreate2Address(ZERO_SALT, keccak256(abi.encodePacked(type(UniversalPermit2Adapter).creationCode, abi.encode(PERMIT2))));
-        if (permit2AdapterAddress.code.length == 0) {
-            UniversalPermit2Adapter permit2Adapter = new UniversalPermit2Adapter{ salt: ZERO_SALT }(PERMIT2);
-            require(permit2AdapterAddress == address(permit2Adapter), "UniversalPermit2Adapter address mismatch.");
-        }
-
-        // NFT Descriptors
-        address tokenDescriptor = deployCreate3({
-            _name: "DCAHubPositionDescriptor",
-            _salt: 'MF-DCAHubPositionDescriptor-V1',
-            _args: hex""
+        //Permit2 Adapter
+       address permit2AdapterAddress=  deployCreate3({
+            _name: "UniversalPermit2Adapter",
+            _salt: 'MF-UniversalPermit2Adapter-V1',
+            _args: abi.encode(PERMIT2, msig, msigArray)
         });
 
-        // Chainlink Registry
-        address chainlinkFeedRegistry;
-        // On Ethereum, we use the `ChainlinkRegistry` operated by Chainlink.
-        if (block.chainid == 1) {
-            chainlinkFeedRegistry = 0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf;
-        } else {
-            chainlinkFeedRegistry = deployCreate3({
-                _name: "ChainlinkRegistry",
-                _salt: 'MF-Chainlink-Feed-Registry-V1',
-                _args: abi.encode(msig, msigArray)
-            });
-        }
-
-        // Transformers
-        deployCreate3({_name: "ERC4626Transformer", _salt: 'MF-ERC4626-Transformer-V1', _args: abi.encode(msig)});
-        deployCreate3({_name: "ProtocolTokenWrapperTransformer", _salt: 'MF-Protocol-Transformer-V1', _args: abi.encode(msig)});
-        address transformerRegistry = deployCreate3({_name: "TransformerRegistry", _salt: 'MF-Transformer-Registry-V1', _args: abi.encode(msig)});
-        if (block.chainid == 1) {
-            address stETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
-            deployCreate3({_name: "wstETHTransformer", _salt: 'MF-wstETH-Transformer-V1', _args: abi.encode(stETH, msig)});
-        }
-
-        // Oracles
-        address transformerOracle = deployOracles({
-            _transformerRegistry: transformerRegistry,
-            _chainlinkFeedRegistry: chainlinkFeedRegistry
+        //Swap Proxy
+        deployCreate3({
+            _name: "SwapProxy",
+            _salt: 'MF-SwapProxy-V1',
+            _args: abi.encode(permit2AdapterAddress, msig, msigArray)
         });
 
-        // DCA V2 Core
-        address permissionsManager = deployCreate3({_name: 'DCAPermissionsManager', _salt: 'MF-DCAV2-PermissionsManager-V1', _args:  abi.encode(msig, tokenDescriptor)});
-        address timelock = deployCreate3({_name: "TimelockController", _salt: 'MF-DCAV2-Timelock-V1', _args: abi.encode(3 days, msigArray, msigArray)});
-        address dcaHub = deployCreate3({_name: "DCAHub", _salt: 'MF-DCAV2-DCAHub-V1', _args: abi.encode(msig, timelock, transformerOracle, permissionsManager)});
 
-        // Swappers
-        address swapperRegistry = deployCreate3({_name: "SwapperRegistry", _salt: 'MF-Swapper-Registry-V1', _args: abi.encode(new address[](0), new address[](0), msig, msigArray)});
-        deployCreate3({_name: 'SwapProxy', _salt: 'MF-Swap-Proxy-V1', _args: abi.encode(swapperRegistry, msig)});
-
-        // DCA V2 Periphery
-        deployCreate3({_name: 'DCAHubCompanion', _salt: 'MF-DCAV2-DCAHubCompanion-V5', _args: abi.encode(permit2AdapterAddress, permit2AdapterAddress, msig, PERMIT2)});
-        deployCreate3({_name: 'CallerOnlyDCAHubSwapper', _salt: 'MF-DCAV2-CallerDCAHubSwapper-V2', _args: hex""});
-        deployCreate3({_name: 'ThirdPartyDCAHubSwapper', _salt: 'MF-DCAV2-3PartySwapper-V3', _args: hex""});
-        deployCreate3({_name: 'DCAFeeManager', _salt: 'MF-DCAV2-DCAFeeManager-V3', _args: abi.encode(msig, msigArray)});
-        if (block.chainid == 1) {
-            address keep3r = 0xeb02addCfD8B773A5FFA6B9d1FE99c566f8c44CC;
-            deployCreate3({_name: 'DCAKeep3rJob', _salt: 'MF-DCAV2-Keep3rJob-V2', _args: abi.encode(keep3r, dcaHub, msig, new address[](0))});
-        }
-    }
-
-    /// @dev Deploys the Oracle contracts. We use a separate function to prevent a "Stack too deep"
-    /// Solidity compiler error, which would occur if we put these deployments in the main `run`
-    /// function.
-    function deployOracles(address _transformerRegistry, address _chainlinkFeedRegistry) internal returns (address transformerOracle) {
-        address chainlinkOracle = deployCreate3({_name: "StatefulChainlinkOracle", _salt: 'MF-StatefulChainlink-Oracle-V2', _args: abi.encode(_chainlinkFeedRegistry, msig, msigArray)});
-        address uniswapV3Oracle = 0xB210CE856631EeEB767eFa666EC7C1C57738d438;
-        address uniswapV3Adapter;
-        if (uniswapV3Oracle.code.length > 0) {
-            IUniswapV3Adapter.InitialConfig memory uniswapV3AdapterArgs = IUniswapV3Adapter.InitialConfig({
-                uniswapV3Oracle: IStaticOracle(uniswapV3Oracle),
-                maxPeriod: 45 minutes,
-                minPeriod: 5 minutes,
-                initialPeriod: 10 minutes,
-                superAdmin: msig,
-                initialAdmins: msigArray
-            });
-            deployCreate3({_name: "UniswapV3Adapter", _salt: 'MF-Uniswap-V3-Adapter-V1', _args: abi.encode(uniswapV3AdapterArgs)});
-        }
-        address identityOracle = deployCreate3({_name: 'IdentityOracle', _salt: 'MF-Identity-Oracle-V1', _args: hex""});
-        address[] memory oracles;
-        if (address(uniswapV3Adapter) == address(0)) {
-            oracles = new address[](2);
-            oracles[0] = identityOracle;
-            oracles[1] = chainlinkOracle;
-        } else {
-            oracles = new address[](3);
-            oracles[0] = identityOracle;
-            oracles[1] = chainlinkOracle;
-            oracles[2] = uniswapV3Adapter;
-        }
-        address oracleAggregator = deployCreate3({_name: 'OracleAggregator', _salt: 'MF-Oracle-Aggregator-V1', _args: abi.encode(oracles, msig, msigArray)});
-        transformerOracle = deployCreate3({_name: 'TransformerOracle', _salt: 'MF-Transformer-Oracle-V2', _args: abi.encode(_transformerRegistry, oracleAggregator, msig, msigArray)});
-        deployCreate3({_name: 'API3ChainlinkAdapterFactory', _salt: 'MF-API3-Adapter-Factory-V2', _args: hex""});
-        deployCreate3({_name: 'DIAChainlinkAdapterFactory', _salt: 'MF-DIA-Adapter-Factory-V2', _args: hex""});
     }
 
     /// @dev Deploys a contract via the `DeterministicFactory`. Skips the deployment if a contract is already
@@ -217,4 +128,7 @@ contract DCA_v2 is Sphinx, Script {
 
         return abi.decode(retdata, (address));
     }
+
+    
+
 }

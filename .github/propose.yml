@@ -1,0 +1,24 @@
+name: Sphinx Propose
+env:
+    SPHINX_API_KEY: ${{ secrets.SPHINX_API_KEY }}
+    ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+
+# Trigger the proposal when the pull request is merged.
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sphinx-propose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Install Dependencies
+        run: yarn --frozen-lockfile
+      - name: Propose
+        run: npx sphinx propose script/DCA_v2.s.sol --confirm --networks testnets
