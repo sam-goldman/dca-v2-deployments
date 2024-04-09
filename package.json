@@ -17,7 +17,7 @@
     "@mean-finance/transformers": "Mean-Finance/transformers#8795e0b",
     "@mean-finance/uniswap-v3-oracle": "1.0.2",
     "@openzeppelin/contracts": "4.9.3",
-    "@sphinx-labs/plugins": "^0.27.1",
+    "@sphinx-labs/plugins": "^0.31.2",
     "@uniswap/v3-core": "1.0.1",
     "base64-sol": "1.0.1"
   }

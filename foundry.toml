@@ -20,6 +20,7 @@
   build_info = true
   extra_output = ['storageLayout']
   fs_permissions=[ {access="read", path="./out"}, {access="read", path="./node_modules"}, {access="read-write", path="./cache"} ]
+  unchecked_cheatcode_artifacts = true
 
 [profile.ci]
   fuzz = { runs = 10_000 }
@@ -39,3 +40,4 @@
   anvil = "http://127.0.0.1:8545"
   optimism_sepolia = "https://opt-sepolia.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
   optimism = "https://opt-mainnet.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
+  rootstock_testnet = "${ROOTSTOCK_TESTNET_RPC_URL}"

@@ -30,14 +30,13 @@ contract DCA_v2 is Sphinx, Script {
     /// @dev Address of the `DeterministicFactory` contract.
     address internal deterministicFactory;
 
-    function setUp() public virtual {
+    function configureSphinx() public override {
         // Sphinx config options
-        sphinxConfig.owners = [address(0)];
-        sphinxConfig.orgId = "";
-        sphinxConfig.mainnets = [Network.optimism];
-        sphinxConfig.testnets = [Network.optimism_sepolia];
-        sphinxConfig.threshold = 0;
+        sphinxConfig.owners = [0x4856e043a1F2CAA8aCEfd076328b4981Aca91000];
+        sphinxConfig.orgId = "clksrkg1v0001l00815670lu8";
+        sphinxConfig.threshold = 1;
         sphinxConfig.projectName = "DCA_v2";
+        sphinxConfig.saltNonce = 123412341234;
 
         msig = safeAddress();
         msigArray.push(msig);

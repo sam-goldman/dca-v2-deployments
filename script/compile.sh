@@ -36,7 +36,7 @@ forge build --contracts node_modules/@mean-finance/dca-v2-core/contracts \
 forge build --contracts node_modules/@mean-finance/dca-v2-core/contracts/DCAHub/DCAHub.sol \
   --use 0.8.16 --optimizer-runs 300 \
   --remappings @openzeppelin/contracts/=node_modules/@mean-finance/dca-v2-core/node_modules/@openzeppelin/contracts/ \
-  --skip test --skip scripts
+  --skip test --skip scripts --via-ir
 
 forge build --contracts node_modules/@mean-finance/swappers/solidity/ \
   --use 0.8.16 --optimizer-runs 9999 \
